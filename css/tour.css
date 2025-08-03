@@ -1,0 +1,13 @@
+/* Street View & Tour */
+.street-view-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 2000; opacity: 1; transition: opacity 0.3s ease; }
+.street-view-container.hidden { opacity: 0; pointer-events: none; }
+#street-view-panorama { width: 100%; height: 100%; }
+.close-street-view-button { position: absolute; top: 16px; right: 16px; z-index: 2003; background-color: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 24px; cursor: pointer; backdrop-filter: blur(4px); }
+.tour-controls { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%); color: white; padding: 24px; z-index: 2002; display: flex; flex-direction: column; align-items: center; }
+.tour-progress-bar-container { width: 100%; max-width: 600px; height: 4px; background-color: rgba(255,255,255,0.3); border-radius: 2px; margin-bottom: 12px; }
+#tour-progress-bar { width: 0%; height: 100%; background-color: var(--md-sys-color-primary); border-radius: 2px; transition: width 0.3s ease; }
+.tour-info { font-size: 18px; font-weight: 500; margin-bottom: 12px; text-shadow: 0 1px 4px #000; }
+.tour-buttons { display: flex; gap: 24px; align-items: center; }
+.tour-nav-button { background: rgba(0,0,0,0.5); border: none; color: white; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+#tour-play-pause { width: 54px; height: 54px; font-size: 20px; }
+.tour-nav-button:disabled { opacity: 0.5; cursor: not-allowed; }

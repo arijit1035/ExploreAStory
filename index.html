@@ -1,0 +1,335 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ExploreAStory</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/css/main.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.7.0"
+        }
+      }
+    </script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <!-- Top header for app title and menu toggle -->
+    <div id="top-header">
+      <button id="menu-toggle-button" class="fab-header" title="Toggle Controls"><i class="fas fa-bars"></i></button>
+      <h1 id="app-title">ExploreAStory</h1>
+    </div>
+
+    <!-- Left side panel for controls -->
+    <div id="left-panel">
+      <div class="main-chat-bar">
+        <textarea id="main-chat-input" placeholder="Explore places, history, events..." rows="1"></textarea>
+        <button id="main-chat-send" class="search-button">
+          <i class="fas fa-arrow-right"></i>
+          <div class="spinner"></div>
+        </button>
+      </div>
+      <div class="main-chat-options">
+        <div class="mode-toggle">
+          <label class="switch">
+            <input type="checkbox" id="planner-mode-toggle" />
+            <span class="slider round"></span>
+          </label>
+          <span class="mode-label">Auto-plan Itinerary</span>
+        </div>
+        <div class="mode-toggle">
+          <label class="switch">
+            <input type="checkbox" id="events-mode-toggle" />
+            <span class="slider round"></span>
+          </label>
+          <span class="mode-label">Include Nearby Events</span>
+        </div>
+        <button id="change-preferences-button" class="change-preferences-button">
+          <i class="fas fa-user-cog"></i> Change Exploration Preferences
+        </button>
+        <div id="preferences-panel" class="preferences-panel">
+          <div class="preference-item">
+            <label class="preference-label">Transport:</label>
+            <div class="transport-selector" id="transport-selector">
+              <label class="transport-option">
+                <input type="checkbox" name="transport" value="walking" checked />
+                <span><i class="fas fa-walking"></i> Walk</span>
+              </label>
+              <label class="transport-option">
+                <input type="checkbox" name="transport" value="public transport" checked />
+                <span><i class="fas fa-bus-alt"></i> Public</span>
+              </label>
+              <label class="transport-option">
+                <input type="checkbox" name="transport" value="cycling" />
+                <span><i class="fas fa-bicycle"></i> Cycle</span>
+              </label>
+              <label class="transport-option">
+                <input type="checkbox" name="transport" value="personal car" />
+                <span><i class="fas fa-car-side"></i> Car</span>
+              </label>
+            </div>
+          </div>
+          <div class="preference-item">
+              <label for="meal-budget-slider" class="preference-label">Max Budget (Per Person Per Meal): <span id="meal-budget-value">$50</span></label>
+              <input type="range" id="meal-budget-slider" min="1" max="100" value="50">
+          </div>
+        </div>
+      </div>
+      <div class="error" id="error-message"></div>
+    </div>
+    
+    <!-- Main container for the map and related UI elements -->
+    <div id="map-container" class="map-container">
+      <div id="map"></div>
+
+      <!-- Carousel for displaying location cards at the bottom -->
+      <div class="card-carousel">
+        <div class="card-container" id="card-container"></div>
+        <div class="carousel-controls">
+          <button class="carousel-arrow" id="prev-card"><i class="fas fa-chevron-left"></i></button>
+          <div class="carousel-indicators" id="carousel-indicators"></div>
+          <button class="carousel-arrow" id="next-card"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+
+      <button id="reset" class="fab" title="Reset Map & Chat"><i class="fas fa-undo"></i></button>
+      <button id="open-diary-button" class="fab" title="Open Travel Diary"><i class="fas fa-book-open"></i></button>
+    </div>
+
+    <div class="map-overlay" id="map-overlay"></div>
+
+    <div class="diary-container" id="diary-container">
+      <div class="diary-header">
+        <div>
+          <h3>My Travel Story</h3>
+          <span id="total-duration" class="total-duration"></span>
+        </div>
+        <div class="diary-actions">
+           <button id="play-tour" class="diary-header-button" title="Play Itinerary Tour" disabled><i class="fas fa-play"></i></button>
+          <button id="position-diary" class="diary-header-button" title="Toggle Position"><i class="fas fa-arrows-alt-h"></i></button>
+          <button id="export-diary" class="diary-header-button" title="Export Diary"><i class="fas fa-download"></i></button>
+          <button id="close-diary" class="diary-header-button" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      <div class="diary" id="diary-entries"></div>
+    </div>
+
+    <div id="spinner" class="hidden spinner"></div>
+
+    <div id="street-view-container" class="street-view-container hidden">
+      <div id="street-view-panorama"></div>
+      <div id="tour-controls" class="tour-controls hidden">
+        <div class="tour-progress-bar-container"><div id="tour-progress-bar" class="tour-progress-bar"></div></div>
+        <div class="tour-info"><span id="tour-location-name"></span></div>
+        <div class="tour-buttons">
+          <button id="tour-prev" class="tour-nav-button"><i class="fas fa-backward"></i></button>
+          <button id="tour-play-pause" class="tour-nav-button"><i class="fas fa-pause"></i></button>
+          <button id="tour-next" class="tour-nav-button"><i class="fas fa-forward"></i></button>
+        </div>
+      </div>
+      <button id="close-street-view" class="close-street-view-button"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Location Chat Modal -->
+    <div id="location-chat-modal" class="modal-overlay hidden">
+      <div class="chat-container">
+        <div class="chat-header">
+          <h4 id="location-chat-title">AI Explorer</h4>
+          <button id="close-location-chat" class="close-button">&times;</button>
+        </div>
+        <div class="chat-messages" id="location-chat-messages"></div>
+        <div class="chat-input-container">
+          <textarea id="location-chat-input" placeholder="Ask a question..." rows="1"></textarea>
+          <button id="location-chat-send" class="send-button"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Visual Search Modal -->
+    <div id="visual-search-modal" class="modal-overlay hidden">
+        <div class="visual-search-container">
+            <div class="visual-search-header">
+                <h4>Scan a Landmark</h4>
+                <button id="close-visual-search" class="close-button">&times;</button>
+            </div>
+            <div class="visual-search-inner">
+                <video id="visual-search-video" autoplay playsinline></video>
+                <canvas id="visual-search-canvas"></canvas>
+                <div id="visual-search-results"></div>
+                <div id="visual-search-spinner" class="spinner hidden"></div>
+            </div>
+            <div class="visual-search-footer">
+                <button id="visual-search-capture" title="Capture Image"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome / Preferences Modal -->
+    <div id="welcome-modal" class="modal-overlay hidden">
+      <div class="welcome-container">
+        <div class="welcome-header">
+          <h2>Discover Your Exploration Style</h2>
+          <button id="skip-preferences" class="skip-button">Skip for now</button>
+        </div>
+        <form id="preferences-form">
+          <div class="question-group">
+            <p>Which of these words best describes your ideal travel vibe? (Select all that apply)</p>
+            <div class="options-group">
+              <label><input type="checkbox" name="vibe" value="Adventurous"> <span>Adventurous (Thrill-seeking, outdoors, exploring the unknown)</span></label>
+              <label><input type="checkbox" name="vibe" value="Romantic"> <span>Romantic (Scenic, charming, intimate, slow-paced)</span></label>
+              <label><input type="checkbox" name="vibe" value="Artsy"> <span>Artsy (Galleries, street art, live music, creative workshops)</span></label>
+              <label><input type="checkbox" name="vibe" value="Cultural"> <span>Cultural (Museums, history, local traditions, culinary deep-dives)</span></label>
+              <label><input type="checkbox" name="vibe" value="Geeky"> <span>Geeky (Themed tours, science centers, niche shops, historical facts)</span></label>
+              <label class="other-input-label">
+                <input type="checkbox" name="vibe" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="vibe_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>When you arrive in a new place, what is your absolute top priority?</p>
+            <div class="options-group">
+              <label><input type="radio" name="priority" value="Local Food"> <span>Trying the most authentic local food I can find.</span></label>
+              <label><input type="radio" name="priority" value="Nature"> <span>Finding a stunning natural landscape or park.</span></label>
+              <label><input type="radio" name="priority" value="Landmarks"> <span>Visiting a major museum or historical landmark.</span></label>
+              <label><input type="radio" name="priority" value="Shopping"> <span>Discovering unique, independent shops and markets.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="priority" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="priority_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>What kind of "hidden gem" are you most excited to stumble upon?</p>
+            <div class="options-group">
+              <label><input type="radio" name="gem" value="Quiet Viewpoint"> <span>A secluded garden or a breathtaking, quiet viewpoint.</span></label>
+              <label><input type="radio" name="gem" value="Niche Museum"> <span>A quirky, niche museum that only locals know about.</span></label>
+              <label><input type="radio" name="gem" value="Family-run Restaurant"> <span>A tiny, family-run restaurant with the best authentic food.</span></label>
+              <label><input type="radio" name="gem" value="Art Alley"> <span>A local artist's studio or a hidden street art alley.</span></label>
+              <label><input type="radio" name="gem" value="Unexpected Trail"> <span>A trail that leads to an unexpected adventure.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="gem" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="gem_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>How do you like to spend your evenings when exploring?</p>
+            <div class="options-group">
+              <label><input type="radio" name="evening" value="Nightlife"> <span>At a high-energy concert or checking out the local nightlife.</span></label>
+              <label><input type="radio" name="evening" value="Performance"> <span>Enjoying a performance, like a play or a local music show.</span></label>
+              <label><input type="radio" name="evening" value="Cozy Dinner"> <span>A quiet, delicious dinner at a cozy spot.</span></label>
+              <label><input type="radio" name="evening" value="Low-key Activity"> <span>A low-key activity like a board game cafe or trivia night.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="evening" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="evening_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>When it comes to souvenirs, you're looking for...</p>
+            <div class="options-group">
+              <label><input type="radio" name="souvenir" value="Local Art or Culture"> <span>Unique art or handmade crafts from local artisans.</span></label>
+              <label><input type="radio" name="souvenir" value="Collectibles"> <span>Rare books, comics, records, or other collectibles.</span></label>
+              <label><input type="radio" name="souvenir" value="About the Place Items"> <span>Items that represents the place like magnets, snow globes, tshirts etc.</span></label>
+              <label><input type="radio" name="souvenir" value="Memories not Things"> <span>I prefer collecting photos and memories, not things.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="souvenir" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="souvenir_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>What kind of story are you most interested in learning about a place?</p>
+            <div class="options-group">
+              <label><input type="radio" name="story" value="Grand History"> <span>The grand history of its famous landmarks and leaders.</span></label>
+              <label><input type="radio" name="story" value="Local Legends"> <span>The local legends, ghost stories, and hidden folklore.</span></label>
+              <label><input type="radio" name="story" value="Technology & Business"> <span>The stories of the Technologies & Industry that shaped it.</span></label>
+              <label><input type="radio" name="story" value="Nature Expeditions"> <span>The tales of epic expeditions and natural wonders.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="story" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="story_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>How far off the beaten path are you willing to go?</p>
+            <div class="options-group">
+              <label><input type="radio" name="path" value="Main Attractions"> <span>I prefer to stick to the main, popular attractions.</span></label>
+              <label><input type="radio" name="path" value="Venture a Few Blocks"> <span>I'll venture a few blocks away for something interesting.</span></label>
+              <label><input type="radio" name="path" value="Get Lost"> <span>I love getting lost in a new neighborhood and seeing what I find.</span></label>
+              <label><input type="radio" name="path" value="Remote"> <span>The more remote and undiscovered, the better.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="path" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="path_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>When you're on vacation, what does your ideal pace look like?</p>
+            <div class="options-group">
+              <label><input type="radio" name="pace" value="Action-packed"> <span>Action-packed from morning to night.</span></label>
+              <label><input type="radio" name="pace" value="Balanced"> <span>A healthy mix of planned activities and relaxation.</span></label>
+              <label><input type="radio" name="pace" value="Spontaneous"> <span>Mostly spontaneous, going wherever the mood takes me.</span></label>
+              <label><input type="radio" name="pace" value="Slow-paced"> <span>Centered around one main event with plenty of downtime.</span></label>
+              <label class="other-input-label">
+                <input type="radio" name="pace" value="Other">
+                <span class="custom-control"></span>
+                <input type="text" name="pace_other" placeholder="Other...">
+              </label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>What's your typical travel budget style?</p>
+            <div class="options-group">
+              <label><input type="radio" name="budget" value="Budget-conscious"> <span>Budget-conscious (I'm all about free activities and cheap eats).</span></label>
+              <label><input type="radio" name="budget" value="Mid-range"> <span>Mid-range (I'll save on some things to splurge on others).</span></label>
+              <label><input type="radio" name="budget" value="High-end"> <span>High-end (I'm looking for premium, once-in-a-lifetime experiences).</span></label>
+            </div>
+          </div>
+          <div class="question-group">
+            <p>Who do you typically explore with?</p>
+            <div class="options-group">
+              <label><input type="radio" name="companion" value="Solo"> <span>I'm usually a solo explorer.</span></label>
+              <label><input type="radio" name="companion" value="Partner"> <span>With a partner.</span></label>
+              <label><input type="radio" name="companion" value="Family"> <span>With my family (including kids).</span></label>
+              <label><input type="radio" name="companion" value="Friends"> <span>With a group of friends.</span></label>
+            </div>
+          </div>
+          <button type="submit" id="submit-preferences" class="submit-button">Start Exploring</button>
+        </form>
+      </div>
+    </div>
+
+
+    <script>
+      ((g) => {
+        var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window;
+        b = b[c] || (b[c] = {});
+        var d = b.maps || (b.maps = {}), r = new Set(), e = new URLSearchParams(),
+          u = () => h || (h = new Promise(async (f, n) => {
+            await (a = m.createElement("script"));
+            e.set("libraries", [...r] + "");
+            for (k in g) e.set(k.replace(/[A-Z]/g, (t) => "_" + t[0].toLowerCase()), g[k]);
+            e.set("callback", c + ".maps." + q);
+            a.src = `https://maps.${c}apis.com/maps/api/js?` + e;
+            d[q] = f;
+            a.onerror = () => (h = n(Error(p + " could not load.")));
+            a.nonce = m.querySelector("script[nonce]")?.nonce || "";
+            m.head.append(a);
+          }));
+        d[l] ? console.warn(p + " only loads once. Ignoring:", g) : (d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)));
+      })({ key: "AIzaSyCNXwnZayI7hxvA3huOB9d82myo1L-7j9Y", v: "weekly" });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
